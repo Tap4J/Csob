@@ -17,7 +17,7 @@ st.title("Player Stats Dashboard")
 season_list = list(df["Season"].unique())
 
 selected_season = st.selectbox("Select a Season", season_list, index=len(season_list))
-df_selected_season = df[df["Season"] == selected_season]
+df_selected_season = df[df["Season Start"] == selected_season]
 df_selected_season_sorted = df_selected_season.sort_values(by="Actual Value (mil)", ascending=False)
 
 def make_line_plot(input_df, x_input, y1_input, y2_input):
@@ -46,8 +46,8 @@ def make_line_plot(input_df, x_input, y1_input, y2_input):
 
 
 def calculate_value_diff(input_df, input_season):
-    selected_season_actual = input_df[input_df["Season"] == input_season].groupby("Player ID")["Actual Value (mil)"].sum().reset_index()
-    selected_season_estimated = input_df[input_df["Season"] == input_season].groupby("Player ID")["Estimated Value (mil)"].sum().fillna(0).reset_index()
+    selected_season_actual = input_df[input_df["Season Start"] == input_season].groupby("Player ID")["Actual Value (mil)"].sum().reset_index()
+    selected_season_estimated = input_df[input_df["Season Start"] == input_season].groupby("Player ID")["Estimated Value (mil)"].sum().fillna(0).reset_index()
     
     merged = pd.merge(selected_season_actual, selected_season_estimated, on="Player ID", how="outer", suffixes=("_actual", "_estimated"))
     
