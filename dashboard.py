@@ -14,7 +14,7 @@ df = pd.read_csv("data/df_cleaned.csv")
 
 st.title("Player Stats Dashboard")
 
-season_list = list(df.year.unique())
+season_list = list(df.season.unique())
 
 selected_season = st.selectbox("Select a Season", season_list, index=len(season_list))
 df_selected_season = df[df["Season"] == selected_season]
