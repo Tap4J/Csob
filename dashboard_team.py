@@ -2,45 +2,112 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 import plotly.graph_objects as go
+print(alt.__version__)
 
 st.set_page_config(
     page_title="Player Stats Dashboard",
     layout="wide",
     initial_sidebar_state="expanded"
 )
-alt.themes.enable("dark")
+
+
+# st.markdown("""
+# <style>
+
+# [data-testid="block-container"] {
+#     padding-left: 2rem;
+#     padding-right: 2rem;
+#     padding-top: 1rem;
+#     padding-bottom: 0rem;
+#     margin-bottom: -7rem;
+# }
+
+# [data-testid="stVerticalBlock"] {
+#     padding-left: 0rem;
+#     padding-right: 0rem;
+# }
+
+# [data-testid="stMetric"] {
+#     background-color: #393939;
+#     text-align: center;
+#     padding: 15px 0;
+# }
+
+# [data-testid="stMetricLabel"] {
+#   display: flex;
+#   justify-content: center;
+#   align-items: center;
+# }
+# </style>
+# """, unsafe_allow_html=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 df = pd.read_csv("data/df_cleaned.csv")
 
-st.title("Player Stats Dashboard")
+with st.sidebar:
 
-season_list = list(df["Season Start"].unique())
-selected_season = st.selectbox("Select a Season", season_list, index=len(season_list) - 1)
-df_selected_season = df[df["Season Start"] == selected_season]
-df_selected_season_sorted = df_selected_season.sort_values(by="Actual Value (mil)", ascending=False)
+    st.title("Player Stats Dashboard")
 
-teams_list = pd.concat([df["New Team"], df["Original Team"]]).unique().tolist()
-selected_team = st.selectbox("Select a Team", teams_list, index=len(teams_list) - 1)
+    season_list = list(df["Season Start"].unique())
+    selected_season = st.selectbox("Select a Season", season_list, index=len(season_list) - 1)
+    df_selected_season = df[df["Season Start"] == selected_season]
+    df_selected_season_sorted = df_selected_season.sort_values(by="Actual Value (mil)", ascending=False)
 
-def make_scatter_plot(input_df, season_list, y_input, group_by_team, color_by):
+    teams_list = pd.concat([df["New Team"], df["Original Team"]]).unique().tolist()
+    selected_team = st.selectbox("Select a Team", teams_list, index=len(teams_list) - 1)
+
+def make_scatter_plot(input_df, season_list, y_input, selected_team, graph_type, color_by):
     all_seasons = pd.DataFrame({"Season Start": season_list})
-    filtered_df = input_df[(input_df["New Team"] == group_by_team) | (input_df["Original Team"] == group_by_team)]
+
+    if graph_type == "bought":
+        filtered_df = input_df[input_df["New Team"] == selected_team]
+    elif graph_type == "sold":
+        filtered_df = input_df[input_df["Original Team"] == selected_team]
+    else:
+        raise ValueError("graph_type must be either 'bought' or 'sold'")
 
     if filtered_df.empty:
-        raise ValueError(f"No data available for team '{group_by_team}'.")
+        no_data_text = alt.Chart(all_seasons).mark_text(
+        align='center',
+        baseline='middle',
+        fontSize=20
+        ).encode(
+            text=alt.value(f"No Data for Players {graph_type.capitalize()} by {selected_team}")
+        ).properties(
+            width=900,
+            height=500,
+            title=f"No Data for Players {graph_type.capitalize()} by {selected_team}"
+        )
+        return no_data_text
+    
+    aggregated_df = filtered_df.groupby(["Season Start", color_by, "Name"])[y_input].sum().reset_index()
+    aggregated_df_with_all_seasons = pd.merge(all_seasons, aggregated_df, on="Season Start", how="left")
+    filtered_chart_data = aggregated_df_with_all_seasons[aggregated_df_with_all_seasons[y_input] > 0]
 
-    aggregated_df = filtered_df.groupby(["Season Start", color_by])[y_input].sum().reset_index()
-    aggregated_df = pd.merge(all_seasons, aggregated_df, on="Season Start", how="left").fillna(0)
-
-
-    scatter_plot = alt.Chart(aggregated_df).mark_circle(size=100).encode(
-        x=alt.X("Season Start:O", title="Season Start"),
+    scatter_plot = alt.Chart(filtered_chart_data ).mark_circle(size=100).encode(
+        x=alt.X("Season Start:O", title="Season", scale=alt.Scale(domain=season_list), axis=alt.Axis(labelAngle=-90)),
         y=alt.Y(f"{y_input}:Q", title=y_input),
         color=alt.Color(f"{color_by}:N", title=color_by),
-        tooltip=["Season Start", f"{y_input}", color_by]
+        tooltip=["Name", "Season Start", f"{y_input}", color_by]
     ).properties(
         width=900,
-        height=500
+        height=500,
+        title=f"Players {graph_type.capitalize()} by {selected_team}"
     )
     
     return scatter_plot
@@ -89,20 +156,26 @@ col = st.columns((1.5, 4.5, 2), gap='medium')
 
 
 with col[0]:
-    st.markdown('#### Total Players Bought/Total PLayers Sold in mil')
+    st.markdown('#### Total Players Bought/Total Players Sold in mil')
 
-    if selected_season > 1999:
-        actual_value = df.groupby("New Team")["Actual Value (mil)"].sum().reset_index()
+    if selected_season not in [None, '']:
+        season_df = df[df["Season Start"] == selected_season]
     else:
-        actual_value = 0
-    if selected_season > 1999:
-        estimated_value = df.groupby("Original Team")["Actual Value (mil)"].sum().reset_index()
-    else:
-        estimated_value = 0
-    
-    st.metric(label="Actual Value vs Estimated", value=f"{actual_value} vs {estimated_value}")
+        season_df = df 
 
-    st.markdown('#### Difference against estimation')
+    new_team_value = season_df[season_df["New Team"] == selected_team]["Actual Value (mil)"].sum()
+    original_team_value = season_df[season_df["Original Team"] == selected_team]["Actual Value (mil)"].sum()
+
+    st.metric(label="Purchased Players", value=new_team_value)
+    st.metric(label="Sold Players", value=original_team_value)
+
+
+
+
+
+
+
+#    st.markdown('#### Difference against estimation')
 
     # donut_chart = make_donut(df_player_difference)
 
@@ -115,10 +188,10 @@ with col[0]:
 with col[1]:
     st.markdown('#### Scatter Plot Chart')
 
-
-    # zavolat ešte original team
-    scatter_plot_new_team = make_scatter_plot(df, season_list, "Actual Value (mil)", selected_team, "Position")
+    scatter_plot_new_team = make_scatter_plot(df, season_list, "Actual Value (mil)", selected_team, "bought", "Position")
     st.altair_chart(scatter_plot_new_team, use_container_width=True)
+    scatter_plot_original_team = make_scatter_plot(df, season_list, "Actual Value (mil)", selected_team, "sold", "Position")
+    st.altair_chart(scatter_plot_original_team, use_container_width=True)
 
 with col[2]:
     st.markdown('#### Players for Selected Season')
