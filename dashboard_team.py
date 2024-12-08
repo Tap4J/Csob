@@ -138,8 +138,11 @@ with col[0]:
     new_team_value = season_df[season_df["New Team"] == selected_team]["Actual Value (mil)"].sum()
     original_team_value = season_df[season_df["Original Team"] == selected_team]["Actual Value (mil)"].sum()
 
-    st.metric(label="Purchased Players Value", value=new_team_value)
-    st.metric(label="Sold Players Value", value=original_team_value)
+    new_team_value_formatted = f"{new_team_value:.2f}"
+    original_team_value_formatted = f"{original_team_value:.2f}"
+
+    st.metric(label="Purchased Players Value", value=new_team_value_formatted)
+    st.metric(label="Sold Players Value", value=original_team_value_formatted)
 
     with st.expander('About', expanded=True):
         st.write('''  
