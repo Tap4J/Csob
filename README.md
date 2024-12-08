@@ -44,7 +44,6 @@ To run the Jupyter Notebook with all the data in the GitHub repository, follow t
 3. Activate a virtual environment and run:
       ```sh
       streamlit run dashboard_team.py
-      source venv/bin/activate
       ```
 **Run your dashboard in browser**
 
