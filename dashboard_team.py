@@ -11,65 +11,74 @@ st.set_page_config(
 )
 
 
-# st.markdown("""
-# <style>
+st.markdown("""
+<style>
+            
+[data-testid="block-container"] {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    background-color: #ffffff; /* White background for the chart */
+    border: 1px solid #000000; /* Black border for the box */
+    margin-bottom: -7rem;
+}
 
-# [data-testid="block-container"] {
-#     padding-left: 2rem;
-#     padding-right: 2rem;
-#     padding-top: 1rem;
-#     padding-bottom: 0rem;
-#     margin-bottom: -7rem;
-# }
+[data-testid="stVerticalBlock"] {
+    padding-left: 0rem;
+    padding-right: 0rem;
+}
 
-# [data-testid="stVerticalBlock"] {
-#     padding-left: 0rem;
-#     padding-right: 0rem;
-# }
+[data-testid="stMetric"] {
+    background-color: #ffffff; /* White background for a card-like appearance */
+    border: 1px solid #d9d9d9; /* Light grey border */
+    border-radius: 10px;
+    text-align: center;
+    padding: 15px 0;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
 
-# [data-testid="stMetric"] {
-#     background-color: #393939;
-#     text-align: center;
-#     padding: 15px 0;
-# }
+[data-testid="stMetricLabel"] {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: "IBM Plex Mono", monospace; /* Match the Altair title font */
+    color: #262730; /* Dark text color */
+    font-weight: bold;
+}
+                 
+[data-testid="block-container"] {
+    padding-left: 2rem;
+    padding-right: 2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    background-color: #ffffff; /* White background for the chart */
+    border: 1px solid #000000; /* Black border for the box */
+    margin-bottom: -7rem;
+}
+                       
+</style>
+""", unsafe_allow_html=True)
 
-# [data-testid="stMetricLabel"] {
-#   display: flex;
-#   justify-content: center;
-#   align-items: center;
-# }
-# </style>
-# """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# Loading data - cleaned without NaN values
 df = pd.read_csv("data/df_cleaned.csv")
+
+# Sidebar definitions for season and players
 
 with st.sidebar:
 
     st.title("Player Stats Dashboard")
+
+    teams_list = pd.concat([df["New Team"], df["Original Team"]]).unique().tolist()
+    selected_team = st.selectbox("Select a Team", teams_list, index=0 )
 
     season_list = list(df["Season Start"].unique())
     selected_season = st.selectbox("Select a Season", season_list, index=len(season_list) - 1)
     df_selected_season = df[df["Season Start"] == selected_season]
     df_selected_season_sorted = df_selected_season.sort_values(by="Actual Value (mil)", ascending=False)
 
-    teams_list = pd.concat([df["New Team"], df["Original Team"]]).unique().tolist()
-    selected_team = st.selectbox("Select a Team", teams_list, index=len(teams_list) - 1)
+
+# Main plots - scatter bought and sold players
 
 def make_scatter_plot(input_df, season_list, y_input, selected_team, graph_type, color_by):
     all_seasons = pd.DataFrame({"Season Start": season_list})
@@ -112,51 +121,14 @@ def make_scatter_plot(input_df, season_list, y_input, selected_team, graph_type,
     
     return scatter_plot
 
-
-
-
-
-
-
-
-
-# def calculate_value_diff(input_df, input_season):
-#     selected_season_actual = input_df[input_df["Season Start"] == input_season].groupby("Player ID")["Actual Value (mil)"].sum().reset_index()
-#     selected_season_estimated = input_df[input_df["Season Start"] == input_season].groupby("Player ID")["Estimated Value (mil)"].sum().fillna(0).reset_index()
-    
-#     merged = pd.merge(selected_season_actual, selected_season_estimated, on="Player ID", how="outer", suffixes=("_actual", "_estimated"))
-    
-#     merged["Difference Value"] = (merged["Actual Value (mil)"] - merged["Actual Value (mil)"])
-
-#     return merged
-
-
-# def make_donut(input_df):
-#     difference_value = input_df["Difference Value"].iloc[0]
-#     if difference_value >= 0:
-#         chart_color = ['#27AE60', '#12783D']
-#     else:
-#         chart_color = ['#E74C3C', '#781F16']
-
-
-#     source = pd.DataFrame({
-#         "Value": [abs(difference_value), 100 - abs(difference_value)],
-#         "Category": ["Difference", "Remaining"]
-#     })
-
-#     donut_chart = alt.Chart(source).mark_arc(innerRadius=45).encode(
-#         theta=alt.Theta(field="Value", type="quantitative"),
-#         color=alt.Color("Category:N", scale=alt.Scale(range=chart_color)),
-#     ).properties(width=130, height=130)
-
-#     return donut_chart
-
+# Site columns
 
 col = st.columns((1.5, 4.5, 2), gap='medium')
 
+# First column definition, calculating total values adn about table
 
 with col[0]:
-    st.markdown('#### Total Players Bought/Total Players Sold in mil')
+    st.markdown('#### Value of Players Bought vs Sold for Selected Season (in mil)')
 
     if selected_season not in [None, '']:
         season_df = df[df["Season Start"] == selected_season]
@@ -166,46 +138,36 @@ with col[0]:
     new_team_value = season_df[season_df["New Team"] == selected_team]["Actual Value (mil)"].sum()
     original_team_value = season_df[season_df["Original Team"] == selected_team]["Actual Value (mil)"].sum()
 
-    st.metric(label="Purchased Players", value=new_team_value)
-    st.metric(label="Sold Players", value=original_team_value)
+    st.metric(label="Purchased Players Value", value=new_team_value)
+    st.metric(label="Sold Players Value", value=original_team_value)
 
+    with st.expander('About', expanded=True):
+        st.write('''  
+            - Data: Football Player Transfers
+            - :orange[**Team Transfers of Players by Position**]: Players that were purchased and sold by the selected team with their position in the team.
+            - :orange[**Value of Players**]: Value of purchased and sold players for particular season for the selected team.
+            - :orange[**Highest Valued Players**]: Highest valeud players for selected season with info about their name, age, new team transfer and value.
+        ''')
 
-
-
-
-
-
-#    st.markdown('#### Difference against estimation')
-
-    # donut_chart = make_donut(df_player_difference)
-
-
-    # migrations_col = st.columns((0.2, 1, 0.2))
-    # with migrations_col[1]:
-    #     st.write('Value')
-    #     st.altair_chart(donut_chart)
+# Second column defintion with plots
 
 with col[1]:
-    st.markdown('#### Scatter Plot Chart')
+    st.markdown('#### Team Transfers of Players')
 
     scatter_plot_new_team = make_scatter_plot(df, season_list, "Actual Value (mil)", selected_team, "bought", "Position")
     st.altair_chart(scatter_plot_new_team, use_container_width=True)
     scatter_plot_original_team = make_scatter_plot(df, season_list, "Actual Value (mil)", selected_team, "sold", "Position")
     st.altair_chart(scatter_plot_original_team, use_container_width=True)
 
+# Third column with table + TOdo donut charts
+
 with col[2]:
-    st.markdown('#### Players for Selected Season')
+    st.markdown(f'#### Highest Valued Players in Season {selected_season}')
 
     st.dataframe(df_selected_season_sorted[["Name", "Age", "New Team", "Actual Value (mil)"]],
                 column_order=("Name", "Age", "New Team", "Actual Value (mil)"),
-                hide_index=True)
+                hide_index=True, height=900 )
 
-    with st.expander('About', expanded=True):
-        st.write('''  
-            - Data: Football Player Transfers
-            - :orange[**Player Transfers**]: Players that changed teams during the selected season.
-            - :orange[**Age and Teams**]: Details about the player’s age and new team for the given season.
-        ''')
 
 
 
